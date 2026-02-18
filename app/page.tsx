@@ -4,6 +4,7 @@ import Hero from "@/components/Hero";
 import Stats from "@/components/Stats";
 import Actions from "@/components/Actions";
 
+
 export default function Home() {
   return (
     <main>

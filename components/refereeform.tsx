@@ -37,7 +37,6 @@ export  const RefereeForm =() => {
             name: "",
             username: "",
             games: "",
-            is_active: false,
         },
     })
     const onSubmit = (data: z.infer<typeof formSchema>) => {

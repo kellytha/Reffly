@@ -7,7 +7,8 @@ import {
   UserButton,
   SignedOut,
   SignInButton,
-  SignUpButton
+  SignUpButton,
+  SignUp
  } from '@clerk/nextjs';
 import NavBar from "@/components/NavBar";
 
