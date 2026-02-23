@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { is } from "zod/v4/locales"
+
 
 const formSchema = z.object({
     name: z.string().min(2, {
@@ -37,7 +37,6 @@ export  const RefereeForm =() => {
             name: "",
             username: "",
             games: "",
-            is_active: false,
         },
     })
     const onSubmit = (data: z.infer<typeof formSchema>) => {
