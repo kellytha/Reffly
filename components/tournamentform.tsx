@@ -34,8 +34,7 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addGame } from "@/app/actions/games";
-import { createTournament } from "@/app/actions/tournament";
+import { createTournamentWithGame } from "@/app/actions/tournament";
 
 const formSchema = z.object({
   name_of_tournament: z.string().min(2, {
@@ -64,14 +63,11 @@ const Tournamentform = () => {
   });
 
   const onSubmit = async (data: any) => {
-    // Step 1 — create tournament
-    const tournamentId = await createTournament({
+    // Atomic operation: create tournament and game in a single transaction
+    await createTournamentWithGame({
       name_of_tournament: data.name_of_tournament,
-      sport: position, // from your dropdown
-    });
-
-    // Step 2 — create game(s)
-    await addGame(tournamentId, {
+      sport: sport, // from your dropdown
+    }, {
       home_team: data.home_team,
       away_team: data.away_team,
       time_slot: data.time_slot,
@@ -80,11 +76,11 @@ const Tournamentform = () => {
     console.log("Tournament + Game saved!");
   };
 
-  const [position, setPosition] = React.useState("bottom");
+  const [sport, setSport] = React.useState("rugby");
 
   const [file, setFile] = useState<File | null>(null);
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     setFile(e.dataTransfer.files[0]);
   }, []);
@@ -113,16 +109,16 @@ const Tournamentform = () => {
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>Type Of Sports</DropdownMenuLabel>
                     <DropdownMenuRadioGroup
-                      value={position}
-                      onValueChange={setPosition}
+                      value={sport}
+                      onValueChange={setSport}
                     >
                       <DropdownMenuRadioItem value="top">
                         Touch Rugby
                       </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="bottom">
+                      <DropdownMenuRadioItem value="rugby">
                         Rugby
                       </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="right">
+                      <DropdownMenuRadioItem value="other">
                         More Sports Coming Soon !
                       </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
@@ -199,18 +195,26 @@ const Tournamentform = () => {
                   </FormItem>
                 )}
               />
-              <button>Add Game</button>
+              <button type="button">Add Game</button>
             </Form>
           </div>
           <div className="flex flex-col justify-center items-center gap-2 p-5 m-3">
             <p className="text-semibold font-black">
               Drop a Pdf/Docx or Picture
             </p>
-            <div
+            <label
+              htmlFor="fileInput"
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              onClick={() => document.getElementById("fileInput")?.click()}
               className="w-81.25 h-45 border-2 bordered border-gray-400 rounded-md flex flex-col justify-center items-center cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  document.getElementById("fileInput")?.click();
+                }
+              }}
             >
               {!file ? (
                 <>
@@ -222,19 +226,19 @@ const Tournamentform = () => {
               ) : (
                 <p className="text-gray-600">{file.name}</p>
               )}
-            </div>
-
+            </label>
             <input
               id="fileInput"
               type="file"
               className="hidden"
+              accept=".pdf,.doc,.docx,image/*"
               onChange={handleChange}
             />
           </div>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onSubmit(form.getValues())}>
+          <AlertDialogAction onClick={form.handleSubmit(onSubmit)}>
             Add
           </AlertDialogAction>
         </AlertDialogFooter>

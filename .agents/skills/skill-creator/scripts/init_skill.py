@@ -13,6 +13,7 @@ Examples:
 
 import sys
 from pathlib import Path
+import re
 
 
 SKILL_TEMPLATE = """---
@@ -202,6 +203,12 @@ def init_skill(skill_name, path):
     Returns:
         Path to created skill directory, or None if error
     """
+      # Validate skill name format
+    if not re.match(r'^[a-z0-9-]+$', skill_name) or \
+        skill_name.startswith('-') or skill_name.endswith('-') or '--' in skill_name or \
+        len(skill_name) > 64:
+        print(f"❌ Error: Skill name '{skill_name}' must be kebab-case (lowercase, digits, hyphens), max 64 characters, and cannot start/end with hyphen or contain consecutive hyphens")        
+        return None
     # Determine skill directory path
     skill_dir = Path(path).resolve() / skill_name
 

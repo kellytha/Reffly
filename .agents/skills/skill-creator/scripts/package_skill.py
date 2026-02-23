@@ -57,6 +57,13 @@ def package_skill(skill_path, output_dir=None):
     skill_name = skill_path.name
     if output_dir:
         output_path = Path(output_dir).resolve()
+        # Guard against packaging into a subdirectory of the skill itself
+        try:
+            output_path.relative_to(skill_path)
+            print("❌ Error: Output directory must be outside the skill folder")
+            return None
+        except ValueError:
+            pass
         output_path.mkdir(parents=True, exist_ok=True)
     else:
         output_path = Path.cwd()
@@ -69,6 +76,8 @@ def package_skill(skill_path, output_dir=None):
             # Walk through the skill directory
             for file_path in skill_path.rglob('*'):
                 if file_path.is_file():
+                    if file_path.resolve() == skill_filename.resolve():
+                        continue
                     # Calculate the relative path within the zip
                     arcname = file_path.relative_to(skill_path.parent)
                     zipf.write(file_path, arcname)
@@ -77,7 +86,7 @@ def package_skill(skill_path, output_dir=None):
         print(f"\n✅ Successfully packaged skill to: {skill_filename}")
         return skill_filename
 
-    except Exception as e:
+    except (OSError, zipfile.BadZipFile) as e:
         print(f"❌ Error creating .skill file: {e}")
         return None
 

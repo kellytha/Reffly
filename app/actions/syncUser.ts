@@ -10,7 +10,10 @@ export async function syncUser() {
   if (!user) return null;
 
   const clerkId = user.id;
-  const email = user.emailAddresses[0]?.emailAddress;
+  const email = user.emailAddresses[0]?.emailAddress?? null;
+  if (!email){
+    console.warn(`User ${user.id} has no email address `);
+  }
   const firstName = user.firstName;
   const lastName = user.lastName;
   const username = user.username;
