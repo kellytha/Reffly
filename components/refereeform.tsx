@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { revalidatePath } from 'next/cache';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -45,6 +46,7 @@ export const RefereeForm = () => {
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     await addReferee(data);
+    revalidatePath('/referees');
     form.reset();
   };
 
