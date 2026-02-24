@@ -53,7 +53,7 @@ export const RefereeForm = () => {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline">Show Dialog</Button>
+            <Button type="button" variant="outline">Add Referee Details</Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -87,7 +87,7 @@ export const RefereeForm = () => {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={form.handleSubmit(onSubmit)}>Add Referee</AlertDialogAction>
+              <AlertDialogAction type="button" onClick={form.handleSubmit(onSubmit)}>Add Referee</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

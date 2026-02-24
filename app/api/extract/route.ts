@@ -3,9 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
-    const file = formData.get("file") as File;
-
-    if (!file) {
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
       return new Response("No file uploaded", { status: 400 });
     }
 
@@ -59,7 +58,15 @@ Rules:
       ],
     });
 
-    return Response.json(JSON.parse(result.response.text()));
+    const rawText = result.response.text();
+    const cleanedText = rawText.replace(/^```(?:json)?\s*|\s*```$/gm, '').trim();
+
+    try {
+      const parsed = JSON.parse(cleanedText);
+      return Response.json(parsed);
+    } catch (error) {
+      return new Response("Invalid JSON from model", { status: 502 });
+    }
   } catch (error) {
     console.error(error);
     return new Response("Error extracting data", { status: 500 });

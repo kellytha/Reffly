@@ -15,7 +15,7 @@ export async function getReferees() {
   const sql = neon(process.env.DATABASE_URL!);
 
   return await sql`
-    SELECT id, name
+    SELECT id, name, phone_number
     FROM referees
     WHERE is_active = true;
   `;

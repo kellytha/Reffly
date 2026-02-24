@@ -6,7 +6,7 @@ const referees = async () => {
   const referees = await getReferees();
   return (
     <div className="flex flex-col justify-center">
-      <h1 className="text-bold">Referees</h1>
+      <h1 className="font-bold text-3xl">Referees</h1>
         <RefereeForm />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
       {referees.map((ref) => (
