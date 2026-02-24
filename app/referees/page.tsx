@@ -1,12 +1,23 @@
 import  { RefereeForm } from "@/components/refereeform";
-import {  RefereeTable } from "@/components/refereetable";
+import { getReferees } from "@/app/actions/referees";
+import RefereeCard from "@/components/refereecard";
 
-const referees = () => {
+const referees = async () => {
+  const referees = await getReferees();
   return (
-    <div>page
-      <h1>Referees</h1>
+    <div className="flex flex-col justify-center">
+      <h1 className="font-bold text-3xl">Referees</h1>
         <RefereeForm />
-        <RefereeTable data={[]} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+      {referees.map((ref) => (
+        <RefereeCard
+          key={ref.id}
+          id={ref.id}
+          name={ref.name}
+          phone_number={ref.phone_number}
+        />
+      ))}
+    </div>
     </div>
   )
 }
