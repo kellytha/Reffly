@@ -8,7 +8,7 @@ const NavBar = () => {
         <Link href="/">Home</Link>
         <Link href="/referees">Referees</Link>
         <Link href="/tournaments">Tournaments</Link>
-        <Link href="/">Allocations</Link>
+        <Link href="/allocations">Allocations</Link>
       </nav>
     </div>
   );
