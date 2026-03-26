@@ -1,5 +1,5 @@
 import  { RefereeForm } from "@/components/refereeform";
-import { getReferees } from "@/app/actions/referees";
+import {getReferees}  from "../actions/referees";
 import RefereeCard from "@/components/refereecard";
 
 const referees = async () => {
@@ -9,7 +9,7 @@ const referees = async () => {
       <h1 className="font-bold text-3xl">Referees</h1>
         <RefereeForm />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-      {referees.map((ref) => (
+      {referees.map((ref:any) => (
         <RefereeCard
           key={ref.id}
           id={ref.id}

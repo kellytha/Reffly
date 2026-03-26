@@ -35,21 +35,32 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTournamentWithGame } from "@/app/actions/tournament";
+import { importFixtures } from "@/app/actions/fixtures";
+import { uploadToDropbox } from "@/app/actions/dropbox";
 
-const formSchema = z.object({
-  name_of_tournament: z.string().min(2, {
-    message: "Tournament name must be at least 2 characters.",
-  }),
-  home_team: z.string().min(2, {
-    message: "Home team name must be at least 2 characters.",
-  }),
-  away_team: z.string().min(2, {
-    message: "Away team name must be at least 2 characters.",
-  }),
-  time_slot: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, {
-    message: "Please enter a valid time (HH:MM).",
-  }),
-});
+const formSchema = z
+  .object({
+    name_of_tournament: z.string().optional(),
+    home_team: z.string().optional(),
+    away_team: z.string().optional(),
+    time_slot: z.string().optional(),
+    field_number: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // At least tournament info OR a document must exist
+      return (
+        data.name_of_tournament ||
+        data.home_team ||
+        data.away_team ||
+        data.time_slot ||
+        data.field_number
+      );
+    },
+    {
+      message: "Please fill tournament details OR upload a document.",
+    },
+  );
 
 const Tournamentform = () => {
   const form = useForm({
@@ -59,23 +70,98 @@ const Tournamentform = () => {
       home_team: "",
       away_team: "",
       time_slot: "",
+      field_number: "",
     },
   });
 
   const onSubmit = async (data: any) => {
-    // Atomic operation: create tournament and game in a single transaction
-    await createTournamentWithGame({
-      name_of_tournament: data.name_of_tournament,
-      sport: sport, // from your dropdown
-    }, {
-      home_team: data.home_team,
-      away_team: data.away_team,
-      time_slot: data.time_slot,
-    });
-    form.reset();
-    console.log("Tournament + Game saved!");
-  };
+    try {
+      let dropboxPath = null;
+      let newTournamentId: number | null = null;
 
+      // Upload document if provided
+      if (file) {
+        const fileName = `${Date.now()}_${file.name}`;
+
+        const uploadResult = await uploadToDropbox(
+          file,
+          `/tournaments/${fileName}`,
+        );
+
+        if (uploadResult.success) {
+          dropboxPath = uploadResult.path;
+        }
+      }
+
+      // If ONLY document exists
+      if (file && !data.name_of_tournament) {
+        newTournamentId = await createTournamentWithGame(
+          {
+            name_of_tournament: "Uploaded Tournament",
+            sport: sport,
+            dropbox_file_path: dropboxPath,
+          },
+          {
+            home_team: "TBD",
+            away_team: "TBD",
+            time_slot: "00:00",
+            field_number: "TBD",
+          },
+        );
+      } else {
+        newTournamentId = await createTournamentWithGame(
+          {
+            name_of_tournament: data.name_of_tournament,
+            sport: sport,
+            dropbox_file_path: dropboxPath,
+          },
+          {
+            home_team: data.home_team,
+            away_team: data.away_team,
+            time_slot: data.time_slot,
+            field_number: data.field_number,
+          },
+        );
+      }
+
+      // Attempt to import fixtures from the uploaded file (if JSON/CSV)
+      if (file && newTournamentId) {
+        const fname = file.name.toLowerCase();
+        if (fname.endsWith('.json')) {
+          const text = await file.text();
+          try {
+            const fixtures = JSON.parse(text);
+            await importFixtures(newTournamentId, fixtures);
+          } catch {
+            // ignore JSON parse errors
+          }
+        } else if (fname.endsWith('.csv')) {
+          const text = await file.text();
+          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          if (lines.length > 1) {
+            const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+            const fixtures: any[] = [];
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',');
+              const row: any = {};
+              headers.forEach((h, idx) => {
+                row[h] = cols[idx] ?? null;
+              });
+              fixtures.push(row);
+            }
+            await importFixtures(newTournamentId, fixtures);
+          }
+        }
+      }
+
+      form.reset();
+      setFile(null);
+
+      console.log("Tournament saved!");
+    } catch (error) {
+      console.error("Error saving tournament:", error);
+    }
+  };
   const [sport, setSport] = React.useState("rugby");
 
   const [file, setFile] = useState<File | null>(null);
@@ -112,7 +198,7 @@ const Tournamentform = () => {
                       value={sport}
                       onValueChange={setSport}
                     >
-                      <DropdownMenuRadioItem value="top">
+                      <DropdownMenuRadioItem value="Touch Rugby">
                         Touch Rugby
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="rugby">
@@ -187,6 +273,24 @@ const Tournamentform = () => {
                       <Input
                         type="time"
                         placeholder="Time Slot"
+                        className="w-81.25"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="field_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Field Number</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="Field Number"
                         className="w-81.25"
                         {...field}
                       />
