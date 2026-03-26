@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { updateReferee, deleteReferee } from "@/app/actions/referees";
+import { updateReferee, deleteReferee, rateRefereeByUser } from "@/app/actions/referees";
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,8 @@ export default function RefereeCard({
   const [editAssociation, setEditAssociation] = useState(association || "");
   const [editClub, setEditClub] = useState(club || "");
   const [editLevel, setEditLevel] = useState(level || "1");
+  const [newRating, setNewRating] = useState<number>(5);
+  const { user } = useUser();
 
   const handleEdit = async () => {
     if (isEditing) {
@@ -69,6 +72,17 @@ export default function RefereeCard({
       await deleteReferee(id);
       window.location.reload();
     }
+  };
+
+  const handleRate = async () => {
+    // Rate using current user; gameId left as undefined for now
+    if (!user) {
+      alert("Please sign in to rate referees");
+      return;
+    }
+    const ratedBy = user.emailAddresses?.[0]?.emailAddress || user.id;
+    await rateRefereeByUser(id, newRating, ratedBy as string, undefined, undefined);
+    alert("Rating submitted");
   };
 
   return (
@@ -160,6 +174,21 @@ export default function RefereeCard({
         <Button onClick={handleDelete} variant="destructive">
           Delete
         </Button>
+        <div className="flex items-center gap-2 ml-2">
+          <select
+            aria-label="Rate referee"
+            value={newRating}
+            onChange={(e) => setNewRating(parseInt(e.target.value, 10))}
+            className="border rounded px-2 py-1"
+          >
+            {[1,2,3,4,5].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <button className="bg-yellow-500 text-black px-3 py-1 rounded" onClick={handleRate}>
+            Rate
+          </button>
+        </div>
       </div>
     </div>
   );

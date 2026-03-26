@@ -63,3 +63,32 @@ export async function rateReferee(refereeId: number, gameId: number, rating: num
     WHERE id = ${refereeId};
   `;
 }
+
+// Rate a referee by the currently logged-in user (or provided identifier).
+// This is a convenience wrapper around the underlying referee_ratings schema
+// that allows rating without requiring a specific game to be tied.
+export async function rateRefereeByUser(
+  refereeId: number,
+  rating: number,
+  ratedBy: string,
+  gameId?: number,
+  comments?: string,
+) {
+  const sql = neon(process.env.DATABASE_URL!);
+
+  await sql`
+    INSERT INTO referee_ratings (referee_id, game_id, rated_by, rating, comments)
+    VALUES (${refereeId}, ${gameId ?? null}, ${ratedBy}, ${rating}, ${comments ?? null});
+  `;
+
+  // Update referee's average rating
+  await sql`
+    UPDATE referees
+    SET rating = (
+      SELECT AVG(rating)::decimal(3,2)
+      FROM referee_ratings
+      WHERE referee_id = ${refereeId}
+    )
+    WHERE id = ${refereeId};
+  `;
+}

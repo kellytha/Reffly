@@ -1,5 +1,11 @@
 import Link from "next/link";
 import React from "react";
+import {
+  SignInButton,
+  UserButton,
+  SignedIn,
+  SignedOut,
+} from "@clerk/nextjs";
 
 const NavBar = () => {
   return (
@@ -10,6 +16,14 @@ const NavBar = () => {
         <Link href="/tournaments">Tournaments</Link>
         <Link href="/allocations">Allocations</Link>
       </nav>
+      <div className="ml-auto pr-4">
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
+        <SignedOut>
+          <SignInButton />
+        </SignedOut>
+      </div>
     </div>
   );
 };

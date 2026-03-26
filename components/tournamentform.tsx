@@ -35,6 +35,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTournamentWithGame } from "@/app/actions/tournament";
+import { importFixtures } from "@/app/actions/fixtures";
 import { uploadToDropbox } from "@/app/actions/dropbox";
 
 const formSchema = z
@@ -76,6 +77,7 @@ const Tournamentform = () => {
   const onSubmit = async (data: any) => {
     try {
       let dropboxPath = null;
+      let newTournamentId: number | null = null;
 
       // Upload document if provided
       if (file) {
@@ -93,7 +95,7 @@ const Tournamentform = () => {
 
       // If ONLY document exists
       if (file && !data.name_of_tournament) {
-        await createTournamentWithGame(
+        newTournamentId = await createTournamentWithGame(
           {
             name_of_tournament: "Uploaded Tournament",
             sport: sport,
@@ -107,7 +109,7 @@ const Tournamentform = () => {
           },
         );
       } else {
-        await createTournamentWithGame(
+        newTournamentId = await createTournamentWithGame(
           {
             name_of_tournament: data.name_of_tournament,
             sport: sport,
@@ -120,6 +122,36 @@ const Tournamentform = () => {
             field_number: data.field_number,
           },
         );
+      }
+
+      // Attempt to import fixtures from the uploaded file (if JSON/CSV)
+      if (file && newTournamentId) {
+        const fname = file.name.toLowerCase();
+        if (fname.endsWith('.json')) {
+          const text = await file.text();
+          try {
+            const fixtures = JSON.parse(text);
+            await importFixtures(newTournamentId, fixtures);
+          } catch {
+            // ignore JSON parse errors
+          }
+        } else if (fname.endsWith('.csv')) {
+          const text = await file.text();
+          const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+          if (lines.length > 1) {
+            const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+            const fixtures: any[] = [];
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',');
+              const row: any = {};
+              headers.forEach((h, idx) => {
+                row[h] = cols[idx] ?? null;
+              });
+              fixtures.push(row);
+            }
+            await importFixtures(newTournamentId, fixtures);
+          }
+        }
       }
 
       form.reset();

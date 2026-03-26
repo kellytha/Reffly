@@ -4,7 +4,13 @@ import { neon } from "@neondatabase/serverless";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const sql = neon(process.env.DATABASE_URL!);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+function getGenAI() {
+  const apiKey = process.env.GEMINI_API_KEY!;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not set in environment variables");
+  }
+  return new GoogleGenerativeAI(apiKey);
+}
 
 export async function getGames() {
   const games = await sql`
@@ -91,15 +97,22 @@ export async function allocateReferees(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error("Error allocating referees:", error);
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
-async function allocateRefereesWithAI(game: any, allReferees: any[], needed: number) {
+async function allocateRefereesWithAI(
+  game: any,
+  allReferees: any[],
+  needed: number,
+) {
   let allocatedReferees: any[] = [];
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = getGenAI().getGenerativeModel({ model: "gemini-pro" });
 
     // Get already allocated referees for this game
     allocatedReferees = await sql`
@@ -109,8 +122,10 @@ async function allocateRefereesWithAI(game: any, allReferees: any[], needed: num
       WHERE ga.game_id = ${game.id};
     `;
 
-    const allocatedIds = allocatedReferees.map(r => r.id);
-    const availableReferees = allReferees.filter(r => !allocatedIds.includes(r.id));
+    const allocatedIds = allocatedReferees.map((r) => r.id);
+    const availableReferees = allReferees.filter(
+      (r) => !allocatedIds.includes(r.id),
+    );
 
     // Get referees who have games within 2 hours before or after this game
     const gameTime = new Date(`${game.game_date}T${game.time_slot}`);
@@ -127,12 +142,14 @@ async function allocateRefereesWithAI(game: any, allReferees: any[], needed: num
       AND ga.referee_id != ALL(${allocatedIds.length > 0 ? allocatedIds : [0]});
     `;
 
-    const busyIds = busyReferees.map(r => r.referee_id);
-    const finalAvailable = availableReferees.filter(r => !busyIds.includes(r.id));
+    const busyIds = busyReferees.map((r) => r.referee_id);
+    const finalAvailable = availableReferees.filter(
+      (r) => !busyIds.includes(r.id),
+    );
 
     if (finalAvailable.length < needed) {
       // If not enough referees, use all available
-      return finalAvailable.slice(0, needed).map(r => r.id);
+      return finalAvailable.slice(0, needed).map((r) => r.id);
     }
 
     const prompt = `
@@ -144,10 +161,10 @@ Game Details:
 - Time: ${game.time_slot}
 - Sport: ${game.sport_type}
 
-Already Allocated Referees: ${allocatedReferees.map(r => `${r.name} (${r.association})`).join(', ') || 'None'}
+Already Allocated Referees: ${allocatedReferees.map((r) => `${r.name} (${r.association})`).join(", ") || "None"}
 
 Available Referees:
-${finalAvailable.map(r => `- ID: ${r.id}, Name: ${r.name}, Association: ${r.association || 'None'}, Club: ${r.club || 'None'}, Level: ${r.level}, Rating: ${r.rating}, Games Today: ${r.games_today}`).join('\n')}
+${finalAvailable.map((r) => `- ID: ${r.id}, Name: ${r.name}, Association: ${r.association || "None"}, Club: ${r.club || "None"}, Level: ${r.level}, Rating: ${r.rating}, Games Today: ${r.games_today}`).join("\n")}
 
 Requirements:
 1. Allocate exactly ${needed} referees for this game
@@ -164,20 +181,26 @@ Please allocate the best ${needed} referees for this game. Return only their IDs
     const response = result.response.text().trim();
 
     // Extract referee IDs from the response
-    const ids = response.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    const ids = response
+      .split(",")
+      .map((id) => parseInt(id.trim()))
+      .filter((id) => !isNaN(id));
 
     // Validate that the IDs exist in available referees
-    const validIds = ids.filter(id => finalAvailable.some(r => r.id === id));
+    const validIds = ids.filter((id) =>
+      finalAvailable.some((r) => r.id === id),
+    );
 
     return validIds.slice(0, needed);
   } catch (error) {
     console.error("AI allocation error:", error);
     // Fallback: allocate highest rated available referees
-    const allocatedIds = allocatedReferees.map((r: { id: any; }) => r.id);
+    const allocatedIds = allocatedReferees.map((r: { id: any }) => r.id);
+    const busyIds = busyReferees?.map(r => r.referee_id) || [];
     return allReferees
-      .filter(r => !allocatedIds.includes(r.id))
+      .filter((r) => !allocatedIds.includes(r.id) && !busyIds.includes(r.id))
       .slice(0, needed)
-      .map(r => r.id);
+      .map((r) => r.id);
   }
 }
 
