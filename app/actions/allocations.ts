@@ -110,7 +110,7 @@ async function allocateRefereesWithAI(
   needed: number,
 ) {
   let allocatedReferees: any[] = [];
-
+  let busyReferees: any[] = []; 
   try {
     const model = getGenAI().getGenerativeModel({ model: "gemini-pro" });
 
